@@ -13,48 +13,51 @@ Projeto consiste num módulo sonar: o servo se movimenta de 0 a 180º, enquanto 
 
 ## Galeria do protótipo
 ### Protótipo físico
-<img width="1269" height="750" alt="Screenshot_1" src="https://github.com/user-attachments/assets/e48dea8c-5003-470b-92d9-d685e171588a" />
+<img width="1306" height="680" alt="Screenshot_3" src="https://github.com/user-attachments/assets/af9473e0-fef8-4c06-8d4d-1bddcd4cfeb5" />
+
 
 ### Visão Esquemática
-<img width="899" height="694" alt="Screenshot_2" src="https://github.com/user-attachments/assets/beb2bf2d-ceb0-4764-a5eb-2c27d4578f8f" />
+<img width="985" height="766" alt="Screenshot_4" src="https://github.com/user-attachments/assets/7c67abb8-d020-48dd-b18a-200642f65d82" />
+
 
 ### Implementação
 ```
-//Importação das bibliotecas
-#include <Wire.h> // Biblioteca utilizada para fazer a comunicação com o I2C
-#include <LiquidCrystal_I2C.h> // Biblioteca utilizada para fazer a comunicação com o display 20x4
-#include <Servo.h> //Biblioteca do Servo
+//Importação de bibliotecas
+#include <LiquidCrystal.h>
+#include <Servo.h>
 
-//Criação dos objetos
-LiquidCrystal_I2C lcd(0x27, 16, 2); // Chamada da funcação LiquidCrystal para ser usada com o I2C
+//Criação dos Objetos
+LiquidCrystal lcd(7,6,5,4,3,2); //Criei objeto --> Passando pinos q o display tá conectado
 Servo servo1; //Objeto criado da biblioteca do Servo
 
-//Definição dos Pinos
+
+//Definição dos pinos
 #define pinServo 11
 #define pinEcho 8
 #define pinTriger 9
 #define pinBuzzer 13
+#define pinLed 12
 
-//Variáveis
+//Variáveis 
 int pos; //Posição º do Servo motor
 
 
-void setup() { //Incia o display lcd
+void setup(){
   Serial.begin(9600);
   //Configurações iniciais do LCD
-  lcd.init(); // Serve para iniciar a comunicação com o display já conectado
-  lcd.backlight(); // Serve para ligar a luz do display
-  lcd.clear(); // Serve para limpar a tela do display
-
+  lcd.begin(16, 2);//Configura o modelo do display em nosso caso 16×2 --> Passo quantas colunas e linhas tem o Display
+  lcd.clear(); //Comando pra limpar a tela
+  
   //Configurações iniciais do Servo motor
-  servo1.attach(pinServo, 500, 2500); //Define que o Servo está conectado a Porta 12
+  servo1.attach(pinServo, 500, 2500); //Define que o Servo está conectado a Porta 11
   servo1.write(0);
 }
 
-void loop() {
+void loop(){
   funcServoMotor();
   //distanciaObjeto();
 }
+
 
 //Função padrão Ultrassônico
 long readUltrasonicDistance(int triggerPin, int echoPin){
@@ -70,67 +73,50 @@ long readUltrasonicDistance(int triggerPin, int echoPin){
   return pulseIn(echoPin, HIGH);
 }
 
+
 //Função do Servo Motor
 void funcServoMotor(){
   for (pos = 0; pos <= 180; pos = pos + 1) {
     servo1.write(pos);
-    funcSensorUltrassonicoLCD(pos);
+    funcSensorUltrassonico(pos);
     delay(10);
   }
   for(pos = 180; pos >= 0; pos = pos - 1){
     servo1.write(pos);
-    funcSensorUltrassonicoLCD(pos);
+    funcSensorUltrassonico(pos);
     delay(10);
   }
 }
 
+
 //Função do Sensor Ultrassônico + Display
-void funcSensorUltrassonicoLCD(int pos){
+void funcSensorUltrassonico(int pos){
   lcd.clear();
   //Posiciona o cursor na coluna e linha indicada no comando
-  lcd.setCursor(2,0); //Setta texto - coluna x linha
-  lcd.print("Angulo: "); //imprime o texto que vai ser expresso
+  lcd.setCursor(3,0); //Setta texto - coluna x linha
+  lcd.print("Ang: "); //imprime o texto que vai ser expresso
   lcd.print(pos); //imprime o texto que vai ser expresso
-  lcd.print("");
- 
-  if (0.01723 * readUltrasonicDistance(pinTriger, pinEcho) <= 25) { //(unidade cm)
-    lcd.setCursor(2,1); //Setta texto - coluna x linha
+  lcd.print("º");
+  
+  if (0.01723 * readUltrasonicDistance(pinTriger, pinEcho) <= 30) { //(unidade cm)
+    lcd.setCursor(3,1); //Setta texto - coluna x linha
     lcd.print("Detectado!"); //imprime o texto que vai ser expresso
     tone(pinBuzzer, 100);
-  } else if (0.01723 * readUltrasonicDistance(pinTriger, pinEcho) > 25) {
-    lcd.setCursor(2,1); //Setta texto - coluna x linha
+    piscaLed();
+  } else if (0.01723 * readUltrasonicDistance(pinTriger, pinEcho) > 30) {
+    lcd.setCursor(3,1); //Setta texto - coluna x linha
     lcd.print(""); //imprime o texto que vai ser expresso
     noTone(pinBuzzer);
   }
   delay(50);    
 }
 
-
-
-//Func Display --> É SÓ PRA TESTAR O DISPLAY
-void funcDisplay() {
-  lcd.setCursor(5, 0); // Coloca o cursor do display na coluna 1 e linha 1
-  lcd.print("Fala,  "); // Comando de saída com a mensagem que deve aparecer na coluna 2 e linha 1.
-
-  lcd.setCursor(5, 1); //Coloca o cursor do display na coluna 1 e linha 2
-  lcd.print("irmao");  // Comando de saida com a mensagem que deve aparecer na coluna 2 e linha 2
-
-  delay(3000);
-  lcd.clear();
-  delay(500);
-
-  lcd.setCursor(5, 0); //Coloca o cursor do display na coluna 1 e linha 1
-  lcd.print("Partiu");  // Comando de saida com a mensagem que deve aparecer na coluna 2 e linha 3
-
-  lcd.setCursor(5, 1); //Coloca o cursor do display na coluna 1 e linha 2
-  lcd.print("gym ;)");  // Comando de saida com a mensagem que deve aparecer na coluna 2 e linha 4
-
-  delay(3000);  // delay de 5 segundos com todas as mensagens na tela
-  lcd.clear(); // Limpa o display até o loop ser reiniciado
-  delay(500);
+void piscaLed(){
+  digitalWrite(pinLed, HIGH);
+  delay(300);
+  digitalWrite(pinLed, LOW);
+  delay(300);
 }
-
-
 void distanciaObjeto(){
   int distancia = 0.01723 * readUltrasonicDistance(pinTriger, pinEcho);
   Serial.print("Distancia pro Objeto: ");
