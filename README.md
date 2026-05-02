@@ -5,6 +5,8 @@ Projeto consiste num módulo sonar: o servo se movimenta de 0 a 180º, enquanto 
 ## Componentes utilizados
 - Arduino UNO
 - Jumpers
+- LED
+- Resistores
 - LCD 16 X 2
 - Resistor 200Ω
 - Micro servo
@@ -13,11 +15,11 @@ Projeto consiste num módulo sonar: o servo se movimenta de 0 a 180º, enquanto 
 
 ## Galeria do protótipo
 ### Protótipo físico
-<img width="1306" height="680" alt="Screenshot_3" src="https://github.com/user-attachments/assets/af9473e0-fef8-4c06-8d4d-1bddcd4cfeb5" />
+<img width="1539" height="783" alt="Screenshot_3" src="https://github.com/user-attachments/assets/fb07b6f3-607e-4b7f-8221-6629d4468006" />
 
 
 ### Visão Esquemática
-<img width="985" height="766" alt="Screenshot_4" src="https://github.com/user-attachments/assets/7c67abb8-d020-48dd-b18a-200642f65d82" />
+<img width="1064" height="825" alt="Screenshot_4" src="https://github.com/user-attachments/assets/fa602fbf-c74f-4742-be32-ab3e62b0e54f" />
 
 
 ### Implementação
@@ -32,11 +34,12 @@ Servo servo1; //Objeto criado da biblioteca do Servo
 
 
 //Definição dos pinos
-#define pinServo 11
+#define pinServo 10
 #define pinEcho 8
 #define pinTriger 9
 #define pinBuzzer 13
-#define pinLed 12
+#define pinLedVermelho 12
+#define pinLedVerde 11
 
 //Variáveis 
 int pos; //Posição º do Servo motor
@@ -101,21 +104,23 @@ void funcSensorUltrassonico(int pos){
   if (0.01723 * readUltrasonicDistance(pinTriger, pinEcho) <= 30) { //(unidade cm)
     lcd.setCursor(3,1); //Setta texto - coluna x linha
     lcd.print("Detectado!"); //imprime o texto que vai ser expresso
-    tone(pinBuzzer, 100);
+    digitalWrite(pinLedVerde, LOW);
+    tone(pinBuzzer, 100, 100);
     piscaLed();
   } else if (0.01723 * readUltrasonicDistance(pinTriger, pinEcho) > 30) {
     lcd.setCursor(3,1); //Setta texto - coluna x linha
     lcd.print(""); //imprime o texto que vai ser expresso
     noTone(pinBuzzer);
+    digitalWrite(pinLedVerde, HIGH);
   }
   delay(50);    
 }
 
 void piscaLed(){
-  digitalWrite(pinLed, HIGH);
-  delay(300);
-  digitalWrite(pinLed, LOW);
-  delay(300);
+  digitalWrite(pinLedVermelho, HIGH);
+  delay(350);
+  digitalWrite(pinLedVermelho, LOW);
+  delay(350);
 }
 void distanciaObjeto(){
   int distancia = 0.01723 * readUltrasonicDistance(pinTriger, pinEcho);
