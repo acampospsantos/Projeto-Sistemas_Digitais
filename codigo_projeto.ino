@@ -8,24 +8,31 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); // Chamada da funcação LiquidCrystal para 
 Servo servo1; //Objeto criado da biblioteca do Servo
 
 //Definição dos Pinos
-#define pinServo 11
+#define pinServo 10
 #define pinEcho 8
-#define pinTriger 9
+#define pinTrigger 9
 #define pinBuzzer 13
+#define pinLedVermelho 12
+#define pinLedVerde 11
 
 //Variáveis
 int pos; //Posição º do Servo motor
+float distancia;
 
 
 void setup() { //Incia o display lcd
   Serial.begin(9600);
+  pinMode(pinLedVermelho, OUTPUT);
+  pinMode(pinLedVerde, OUTPUT);
+  pinMode(pinBuzzer, OUTPUT);
+  
   //Configurações iniciais do LCD
   lcd.init(); // Serve para iniciar a comunicação com o display já conectado
   lcd.backlight(); // Serve para ligar a luz do display
   lcd.clear(); // Serve para limpar a tela do display
 
-  //Configurações iniciais do Servo motor
-  servo1.attach(pinServo, 500, 2500); //Define que o Servo está conectado a Porta 12
+  //Configurações iniciais do Servo motorA
+  servo1.attach(pinServo, 500, 2500); //Define que o Servo está conectado a Porta 10
   servo1.write(0);
 }
 
@@ -53,66 +60,80 @@ void funcServoMotor(){
   for (pos = 0; pos <= 180; pos = pos + 1) {
     servo1.write(pos);
     funcSensorUltrassonicoLCD(pos);
-    delay(10);
+    delay(100);
   }
   for(pos = 180; pos >= 0; pos = pos - 1){
     servo1.write(pos);
     funcSensorUltrassonicoLCD(pos);
-    delay(10);
+    delay(100);
   }
 }
 
 //Função do Sensor Ultrassônico + Display
 void funcSensorUltrassonicoLCD(int pos){
-  lcd.clear();
+  distancia = 0.01723 * readUltrasonicDistance(pinTrigger, pinEcho);
+  //lcd.clear();
   //Posiciona o cursor na coluna e linha indicada no comando
   lcd.setCursor(2,0); //Setta texto - coluna x linha
   lcd.print("Angulo: "); //imprime o texto que vai ser expresso
   lcd.print(pos); //imprime o texto que vai ser expresso
-  lcd.print("");
+  lcd.print("   "); // limpa resto da linha
  
-  if (0.01723 * readUltrasonicDistance(pinTriger, pinEcho) <= 25) { //(unidade cm)
+  if (distancia <= 50) { //(unidade cm)
     lcd.setCursor(2,1); //Setta texto - coluna x linha
-    lcd.print("Detectado!"); //imprime o texto que vai ser expresso
-    tone(pinBuzzer, 100);
-  } else if (0.01723 * readUltrasonicDistance(pinTriger, pinEcho) > 25) {
+    lcd.print("Dist: "); //imprime o texto que vai ser expresso
+    lcd.print(distancia, 1);
+    lcd.print("cm ");
+    digitalWrite(pinLedVerde, LOW);
+    tone(pinBuzzer, 100, 100);
+    piscaLed();
+  } else {
     lcd.setCursor(2,1); //Setta texto - coluna x linha
-    lcd.print(""); //imprime o texto que vai ser expresso
+    lcd.print("                   "); //imprime o texto que vai ser expresso
     noTone(pinBuzzer);
+    digitalWrite(pinLedVerde, HIGH);
+    digitalWrite(pinLedVermelho, LOW);
   }
   delay(50);    
 }
 
 
-
-//Func Display --> É SÓ PRA TESTAR O DISPLAY
-void funcDisplay() {
-  lcd.setCursor(5, 0); // Coloca o cursor do display na coluna 1 e linha 1
-  lcd.print("Fala,  "); // Comando de saída com a mensagem que deve aparecer na coluna 2 e linha 1.
-
-  lcd.setCursor(5, 1); //Coloca o cursor do display na coluna 1 e linha 2
-  lcd.print("irmao");  // Comando de saida com a mensagem que deve aparecer na coluna 2 e linha 2
-
-  delay(3000);
-  lcd.clear();
-  delay(500);
-
-  lcd.setCursor(5, 0); //Coloca o cursor do display na coluna 1 e linha 1
-  lcd.print("Partiu");  // Comando de saida com a mensagem que deve aparecer na coluna 2 e linha 3
-
-  lcd.setCursor(5, 1); //Coloca o cursor do display na coluna 1 e linha 2
-  lcd.print("gym ;)");  // Comando de saida com a mensagem que deve aparecer na coluna 2 e linha 4
-
-  delay(3000);  // delay de 5 segundos com todas as mensagens na tela
-  lcd.clear(); // Limpa o display até o loop ser reiniciado
-  delay(500);
+void piscaLed(){
+  digitalWrite(pinLedVermelho, HIGH);
+  delay(50);
+  digitalWrite(pinLedVermelho, LOW);
+  delay(50);
 }
 
 
-void distanciaObjeto(){
-  int distancia = 0.01723 * readUltrasonicDistance(pinTriger, pinEcho);
-  Serial.print("Distancia pro Objeto: ");
-  Serial.print(distancia);
-  Serial.println("cm");
-  delay(100);
-}
+// //Func Display --> É SÓ PRA TESTAR O DISPLAY
+// void funcDisplay() {
+//   lcd.setCursor(5, 0); // Coloca o cursor do display na coluna 1 e linha 1
+//   lcd.print("Fala,  "); // Comando de saída com a mensagem que deve aparecer na coluna 2 e linha 1.
+
+//   lcd.setCursor(5, 1); //Coloca o cursor do display na coluna 1 e linha 2
+//   lcd.print("irmao");  // Comando de saida com a mensagem que deve aparecer na coluna 2 e linha 2
+
+//   delay(3000);
+//   lcd.clear();
+//   delay(500);
+
+//   lcd.setCursor(5, 0); //Coloca o cursor do display na coluna 1 e linha 1
+//   lcd.print("Partiu");  // Comando de saida com a mensagem que deve aparecer na coluna 2 e linha 3
+
+//   lcd.setCursor(5, 1); //Coloca o cursor do display na coluna 1 e linha 2
+//   lcd.print("gym ;)");  // Comando de saida com a mensagem que deve aparecer na coluna 2 e linha 4
+
+//   delay(3000);  // delay de 5 segundos com todas as mensagens na tela
+//   lcd.clear(); // Limpa o display até o loop ser reiniciado
+//   delay(500);
+// }
+
+
+// void distanciaObjeto(){ //--> SÓ PRA TESTAR ULTRASSÔNICO
+//   distancia = 0.01723 * readUltrasonicDistance(pinTrigger, pinEcho);
+//   Serial.print("Distancia pro Objeto: ");
+//   Serial.print(distancia);
+//   Serial.println("cm");
+//   delay(100);
+// }
