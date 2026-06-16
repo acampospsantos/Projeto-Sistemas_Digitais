@@ -24,143 +24,146 @@ Projeto consiste num módulo sonar: o servo se movimenta de 0 a 180º, enquanto 
 
 ### Implementação
 ```
-//Importação das bibliotecas
-#include <Wire.h> // Biblioteca utilizada para fazer a comunicação com o I2C
-#include <LiquidCrystal_I2C.h> // Biblioteca utilizada para fazer a comunicação com o display 20x4
-#include <Servo.h> //Biblioteca do Servo
+// ====================================================================
+//  Radar Ultrassônico — Arduino UNO
+//
+//  O servo carrega um sensor ultrassônico (HC-SR04) e existem 2 modos:
+//    AUTOMÁTICO -> o servo varre sozinho de 0° a 180° e volta.
+//    MANUAL     -> o joystick controla o ângulo do servo.
+//  Apertar o botão do joystick troca de um modo para o outro.
+//
+//  O sensor mede a distância o tempo todo. Se algo entrar a até 50 cm,
+//  o LED vermelho acende e o buzzer apita. Caso contrário, o LED verde
+//  fica aceso. O ângulo e a distância aparecem no display LCD.
+// ====================================================================
 
-//Criação dos objetos
-LiquidCrystal_I2C lcd(0x27, 16, 2); // Chamada da funcação LiquidCrystal para ser usada com o I2C
-Servo servo1; //Objeto criado da biblioteca do Servo
+// ----- Bibliotecas ---------------------------------------------------------------------------------------------------
+#include <Wire.h>               // comunicação I2C (usada pelo display)
+#include <LiquidCrystal_I2C.h>  // controla o display LCD
+#include <Servo.h>              // controla o servo motor
 
-//Definição dos Pinos
+// ----- Display e Servo ------------------------------------------------------------------------------------------------
+LiquidCrystal_I2C lcd(0x27, 16, 2);  // display de 16 colunas x 2 linhas
+Servo servo;
+
+// ----- Pinos ----------------------------------------------------------------------------------------------------------
 #define pinServo 10
-#define pinEcho 8
-#define pinTrigger 9
+#define pinTrigger 9 // ultrassônico: envia o pulso de som
+#define pinEcho 8 // ultrassônico: recebe o eco de volta
 #define pinBuzzer 13
 #define pinLedVermelho 12
 #define pinLedVerde 11
+#define pinJoyX A0 // eixo X do joystick
+#define pinBotao 2 // botão do joystick (apertar)
 
-//Variáveis
-int pos; //Posição º do Servo motor
-float distancia;
+// ----- Configuração que você pode mudar --------------------------------------------------------------------------------
+const int DISTANCIA_ALERTA = 50; // distância (cm) que dispara o alerta
 
+// ----- Variáveis de controle --------------------------------------------------------------------------------------------
+int anguloServo = 0; // posição atual do servo (0 a 180)
+int direcao = 1; // no modo automático: +1 = indo, -1 = voltando
+bool modoManual = false; // false = automático, true = joystick
+bool botaoAntes = false; // guarda se o botão já estava apertado
 
-void setup() { //Incia o display lcd
-  Serial.begin(9600);
+// -------------------------------------------------------------------------------------------------------------------------
+void setup() {
+  // configura os pinos
+  pinMode(pinTrigger, OUTPUT);
+  pinMode(pinEcho, INPUT);
+  pinMode(pinBuzzer, OUTPUT);
   pinMode(pinLedVermelho, OUTPUT);
   pinMode(pinLedVerde, OUTPUT);
-  pinMode(pinBuzzer, OUTPUT);
-  
-  //Configurações iniciais do LCD
-  lcd.init(); // Serve para iniciar a comunicação com o display já conectado
-  lcd.backlight(); // Serve para ligar a luz do display
-  lcd.clear(); // Serve para limpar a tela do display
-
-  //Configurações iniciais do Servo motorA
-  servo1.attach(pinServo, 500, 2500); //Define que o Servo está conectado a Porta 10
-  servo1.write(0);
+  pinMode(pinBotao, INPUT_PULLUP); // HIGH quando solto, LOW quando apertado
+  // liga o display
+  lcd.init();
+  lcd.backlight();
+  // liga o servo e coloca no ângulo inicial
+  servo.attach(pinServo, 500, 2500);  // 500/2500 = alcance do servo (em µs)
+  servo.write(anguloServo);
 }
+
+//---------------------------------------------------------------------------------------------------------------------------
 
 void loop() {
-  funcServoMotor();
-  //distanciaObjeto();
-}
-
-//Função padrão Ultrassônico
-long readUltrasonicDistance(int triggerPin, int echoPin){
-  pinMode(triggerPin, OUTPUT);  // Clear the trigger
-  digitalWrite(triggerPin, LOW);
-  delayMicroseconds(2);
-  // Sets the trigger pin to HIGH state for 10 microseconds
-  digitalWrite(triggerPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(triggerPin, LOW);
-  pinMode(echoPin, INPUT);
-  // Reads the echo pin, and returns the sound wave travel time in microseconds
-  return pulseIn(echoPin, HIGH);
-}
-
-//Função do Servo Motor
-void funcServoMotor(){
-  for (pos = 0; pos <= 180; pos = pos + 1) {
-    servo1.write(pos);
-    funcSensorUltrassonicoLCD(pos);
-    delay(100);
-  }
-  for(pos = 180; pos >= 0; pos = pos - 1){
-    servo1.write(pos);
-    funcSensorUltrassonicoLCD(pos);
-    delay(100);
-  }
-}
-
-//Função do Sensor Ultrassônico + Display
-void funcSensorUltrassonicoLCD(int pos){
-  distancia = 0.01723 * readUltrasonicDistance(pinTrigger, pinEcho);
-  //lcd.clear();
-  //Posiciona o cursor na coluna e linha indicada no comando
-  lcd.setCursor(2,0); //Setta texto - coluna x linha
-  lcd.print("Angulo: "); //imprime o texto que vai ser expresso
-  lcd.print(pos); //imprime o texto que vai ser expresso
-  lcd.print("   "); // limpa resto da linha
- 
-  if (distancia <= 50) { //(unidade cm)
-    lcd.setCursor(2,1); //Setta texto - coluna x linha
-    lcd.print("Dist: "); //imprime o texto que vai ser expresso
-    lcd.print(distancia, 1);
-    lcd.print("cm ");
-    digitalWrite(pinLedVerde, LOW);
-    tone(pinBuzzer, 100, 100);
-    piscaLed();
+  verificaBotao();   // troca de modo se o botão foi apertado
+  if (modoManual) {
+    moveServoComJoystick();
   } else {
-    lcd.setCursor(2,1); //Setta texto - coluna x linha
-    lcd.print("                   "); //imprime o texto que vai ser expresso
-    noTone(pinBuzzer);
-    digitalWrite(pinLedVerde, HIGH);
-    digitalWrite(pinLedVermelho, LOW);
+    moveServoAutomatico();
   }
-  delay(50);    
+  float distancia = medeDistancia();
+  mostraNoLCD(distancia);
+  verificaAlerta(distancia);
+  delay(15);  // pequena pausa; aumente este número para o servo ir mais devagar
 }
 
-
-void piscaLed(){
-  digitalWrite(pinLedVermelho, HIGH);
-  delay(50);
-  digitalWrite(pinLedVermelho, LOW);
-  delay(50);
+// Troca entre automático e manual quando o botão é apertado.
+void verificaBotao() {
+  bool apertadoAgora = (digitalRead(pinBotao) == LOW);
+  // só troca no instante em que o botão passa de solto para apertado
+  if (apertadoAgora && !botaoAntes) {
+    modoManual = !modoManual;
+  }
+  botaoAntes = apertadoAgora;
 }
 
+// Modo automático: anda 1 grau por vez e inverte ao chegar nas pontas.
+void moveServoAutomatico() {
+  anguloServo = anguloServo + direcao;
+  if (anguloServo >= 180) direcao = -1;  // chegou no fim: começa a voltar
+  if (anguloServo <= 0)   direcao =  1;  // voltou ao início: vai de novo
+  servo.write(anguloServo);
+}
 
-// //Func Display --> É SÓ PRA TESTAR O DISPLAY
-// void funcDisplay() {
-//   lcd.setCursor(5, 0); // Coloca o cursor do display na coluna 1 e linha 1
-//   lcd.print("Fala,  "); // Comando de saída com a mensagem que deve aparecer na coluna 2 e linha 1.
+// Modo manual: o eixo X do joystick define o ângulo do servo.
+void moveServoComJoystick() {
+  int leitura = analogRead(pinJoyX);            // valor de 0 a 1023
+  anguloServo = map(leitura, 0, 1023, 0, 180);  // converte para 0 a 180
+  servo.write(anguloServo);
+}
 
-//   lcd.setCursor(5, 1); //Coloca o cursor do display na coluna 1 e linha 2
-//   lcd.print("irmao");  // Comando de saida com a mensagem que deve aparecer na coluna 2 e linha 2
+// Mede a distância em centímetros usando o sensor ultrassônico.
+float medeDistancia() {
+  // envia um pulso curto (10 µs) pelo trigger
+  digitalWrite(pinTrigger, LOW);
+  delayMicroseconds(2);
+  digitalWrite(pinTrigger, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(pinTrigger, LOW);
+  // mede quanto tempo o eco demorou a voltar (em microssegundos)
+  long tempo = pulseIn(pinEcho, HIGH, 25000);  // espera no máximo 25 ms
+  return tempo * 0.01723;  // transforma o tempo em centímetros
+}
 
-//   delay(3000);
-//   lcd.clear();
-//   delay(500);
+// Mostra o ângulo, o modo e a distância no display.
+void mostraNoLCD(float distancia) {
+  lcd.setCursor(0, 0);
+  lcd.print("Ang: ");
+  lcd.print(anguloServo);
+  lcd.print("   "); // apaga sobras do número anterior
+  lcd.setCursor(9, 0);
+  lcd.print(modoManual ? "MANUAL" : "AUTO  ");
+  lcd.setCursor(0, 1);
+  lcd.print("Dist: ");
+  if (distancia > 0) {
+    lcd.print(distancia, 1);
+    lcd.print(" cm   "); // espaços limpam sobras de uma medida maior
+  } else {
+    lcd.print("N/D       "); // nada detectado (espaços limpam a linha)
+  }
+}
 
-//   lcd.setCursor(5, 0); //Coloca o cursor do display na coluna 1 e linha 1
-//   lcd.print("Partiu");  // Comando de saida com a mensagem que deve aparecer na coluna 2 e linha 3
-
-//   lcd.setCursor(5, 1); //Coloca o cursor do display na coluna 1 e linha 2
-//   lcd.print("gym ;)");  // Comando de saida com a mensagem que deve aparecer na coluna 2 e linha 4
-
-//   delay(3000);  // delay de 5 segundos com todas as mensagens na tela
-//   lcd.clear(); // Limpa o display até o loop ser reiniciado
-//   delay(500);
-// }
-
-
-// void distanciaObjeto(){ //--> SÓ PRA TESTAR ULTRASSÔNICO
-//   distancia = 0.01723 * readUltrasonicDistance(pinTrigger, pinEcho);
-//   Serial.print("Distancia pro Objeto: ");
-//   Serial.print(distancia);
-//   Serial.println("cm");
-//   delay(100);
-// }
+// Liga o alerta (LED vermelho + buzzer) quando há algo perto.
+void verificaAlerta(float distancia) {
+  bool perto = (distancia > 0 && distancia <= DISTANCIA_ALERTA);
+  if (perto) {
+    digitalWrite(pinLedVerde, LOW);
+    digitalWrite(pinLedVermelho, HIGH);
+    tone(pinBuzzer, 1000); // apita em 1000 Hz
+  } else {
+    digitalWrite(pinLedVermelho, LOW);
+    digitalWrite(pinLedVerde, HIGH);
+    noTone(pinBuzzer); // silêncio
+  }
+}
 ```
