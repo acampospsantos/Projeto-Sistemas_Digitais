@@ -41,6 +41,7 @@ bool botaoAntes = false; // guarda se o botão já estava apertado
 
 // -------------------------------------------------------------------------------------------------------------------------
 void setup() {
+  Serial.begin(9600); // envia "angulo,distancia" para o sonar no PC (Python)
   // configura os pinos
   pinMode(pinTrigger, OUTPUT);
   pinMode(pinEcho, INPUT);
@@ -68,7 +69,15 @@ void loop() {
   float distancia = medeDistancia();
   mostraNoLCD(distancia);
   verificaAlerta(distancia);
+  enviaParaPC(distancia);  // manda angulo e distancia para o sonar no PC
   delay(15);  // pequena pausa; aumente este número para o servo ir mais devagar
+}
+
+// Envia "angulo,distancia" pela serial para o programa de visualizacao (Python).
+void enviaParaPC(float distancia) {
+  Serial.print(anguloServo);
+  Serial.print(",");
+  Serial.println(distancia, 1);  // 1 casa decimal
 }
 
 // Troca entre automático e manual quando o botão é apertado.
