@@ -19,6 +19,7 @@ OBS: Além do modo automático de varredura, o projeto também oferece um modo m
 - Sinalização visual com LEDs de status.
 - Alerta sonoro por buzzer.
 - Controle manual do servo via joystick.
+- Visualização em tempo real no computador através de um script Python (sonar_visual.py).
 
 ## Componentes utilizados
 - Arduino UNO
@@ -31,6 +32,10 @@ OBS: Além do modo automático de varredura, o projeto também oferece um modo m
 - Sensor de distância ultrassônico
 - Buzzer
 - Joystick
+
+## Como rodar
+- Arduino: abra `codigo_projeto/codigo_projeto.ino` na IDE e instale a biblioteca `LiquidCrystal_I2C` pelo Gerenciador de Bibliotecas antes de compilar.
+- Visualização no PC (opcional): dentro da pasta `codigo_projeto`, rode `pip install -r requirements.txt` e depois `python sonar_visual.py COMx`, trocando `COMx` pela porta serial do Arduino.
 
 ## Galeria do protótipo
 ### Protótipo físico
